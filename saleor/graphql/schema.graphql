@@ -2848,6 +2848,7 @@ type Mutation {
   permissionGroupCreate(input: PermissionGroupCreateInput!): PermissionGroupCreate
   permissionGroupUpdate(id: ID!, input: PermissionGroupUpdateInput!): PermissionGroupUpdate
   permissionGroupDelete(id: ID!): PermissionGroupDelete
+  oauthTokenCreate(backend: String!, access_token: String!): CreateOAuthToken
 }
 
 input NameTranslationInput {
