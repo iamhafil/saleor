@@ -1,14 +1,13 @@
 import graphene
-import logging
-import django.conf as conf
-
 from functools import wraps
+from django.contrib.auth import authenticate, get_user_model
 from django.utils.translation import ugettext as _
 
 from promise import Promise, is_thenable
 from django.dispatch import Signal
+token_issued = Signal(providing_args=['request', 'user'])
 
-from graphql_jwt.exceptions import JSONWebTokenError
+from graphql_jwt.exceptions import JSONWebTokenError, PermissionDenied
 from graphql_jwt.mixins import ResolveMixin, ObtainJSONWebTokenMixin
 from graphql_jwt.decorators import setup_jwt_cookie
 from graphql_jwt.settings import jwt_settings
@@ -17,15 +16,9 @@ from graphql_jwt.refresh_token.shortcuts import refresh_token_lazy
 from social_django.utils import load_strategy, load_backend
 from social_django.compat import reverse
 
-from ...account.types import User
-from ...core.types import Error
-from ...shop.types import AuthorizationKeyType
-from ....site.models import AuthorizationKey
 
-logger = logging.getLogger(__name__)
-
-token_issued = Signal(providing_args=['request', 'user'])
-
+from ..account.types import User
+from ..core.types import Error
 
 def token_auth(f):
     @wraps(f)
@@ -45,13 +38,6 @@ def token_auth(f):
 
         token = kwargs.get('access_token')
         backend = kwargs.get('backend')
-
-        if not hasattr(conf.settings, 'SOCIAL_AUTH_FACEBOOK_KEY') or not hasattr(conf.settings,
-                                                                                  'SOCIAL_AUTH_FACEBOOK_SECRET'):
-            authorization_key = AuthorizationKey.objects.get(name=backend)
-            conf.settings.SOCIAL_AUTH_FACEBOOK_KEY = authorization_key.key
-            conf.settings.SOCIAL_AUTH_FACEBOOK_SECRET = authorization_key.password
-
         context.social_strategy = load_strategy(context)
         # backward compatibility in attribute name, only if not already
         # defined
@@ -77,7 +63,6 @@ def token_auth(f):
         if is_thenable(result):
             return Promise.resolve(values).then(on_resolve)
         return on_resolve(values)
-
     return wrapper
 
 
@@ -97,16 +82,13 @@ class CreateOAuthToken(ResolveMixin, JSONWebTokenMutation):
 
     class Arguments:
         access_token = graphene.String(description="Access token.")
-        backend = AuthorizationKeyType(
-            required=True, description="Authentication backend."
-        )
+        backend = graphene.String(description="Authenticate backend")
 
     @classmethod
     def mutate(cls, root, info, **kwargs):
         try:
             result = super().mutate(root, info, **kwargs)
         except JSONWebTokenError as e:
-            logger.error(e)
             return CreateOAuthToken(errors=[Error(message=str(e))])
         else:
             return result
@@ -114,7 +96,6 @@ class CreateOAuthToken(ResolveMixin, JSONWebTokenMutation):
     @classmethod
     def resolve(cls, root, info, **kwargs):
         return cls(user=info.context.user, errors=[])
-
 
 class OAuthMutations(graphene.ObjectType):
     oauth_token_create = CreateOAuthToken.Field()
