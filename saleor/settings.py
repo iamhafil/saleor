@@ -606,3 +606,4 @@ SOCIAL_AUTH_PIPELINE = (
 
 AUTHENTICATION_BACKENDS = [
     "social_core.backends.facebook.FacebookOAuth2",
+]
