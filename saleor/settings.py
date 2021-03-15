@@ -467,6 +467,7 @@ SEARCH_BACKEND = "saleor.search.backends.postgresql"
 
 AUTHENTICATION_BACKENDS = [
     "saleor.core.auth_backend.JSONWebTokenBackend",
+    "social_core.backends.facebook.FacebookOAuth2",
 ]
 
 # CELERY SETTINGS
@@ -604,6 +605,4 @@ SOCIAL_AUTH_PIPELINE = (
     'social_core.pipeline.social_auth.associate_by_email',
 )
 
-AUTHENTICATION_BACKENDS = [
-    "social_core.backends.facebook.FacebookOAuth2",
-]
+
